@@ -1,0 +1,238 @@
+---
+title: "TimeSeries__kitagawa_#1"
+author: "Kenta Sakamoto"
+date: "2020/1/2"
+output: html_document
+---
+
+# 統計データ
+ - 独立な観測データ
+  - 調査データ
+  - 治験データ
+  - 多変量解析データ
+ - 時系列データ
+  - 株価データ
+  - 地震データ
+  - 制御系データ
+ - 空間データ
+  - GIS
+ - 時空間データ
+  - 気象データ
+  - 人口流動データ
+  
+# 時系列とは
+ - 時間とともに不規則に変動する現象の記録
+ 
+$n,t$ : 観測した時刻  
+$y_n,y(n)$ : 時刻$n$の観測値  
+$N,T$ : データ数  
+$y_1,\dots,y_n$ : 時系列  
+
+# コーディング
+## 船舶の方向角速度のデータ
+```{r}
+hakusan <- as.ts(read.csv("../data/hakusan_new.csv"))
+plot(hakusan[,1])
+```
+
+ - データの特徴
+  - 定常性
+  - 周期性
+  
+## 太陽黒点数データ
+```{r}
+sunspot <- as.ts(read.csv("../data/sunspot_new.csv"))
+plot(sunspot)
+```
+  
+  - データの特徴
+   - 正値、上下非対称
+   - 疑似周期性
+   - 前後非対称
+   
+## 日最高気温データ
+```{r}
+maxtemp <- as.ts(read.csv("../data/maxtemp.csv"))
+plot(maxtemp,ylim = c(0,35))
+```
+
+  - トレンド(長期の周期性)
+  - トレンド周りほぼ定常
+  
+## 米国食品産業従事者数データ
+```{r}
+blsfood <- as.ts(read.csv("../data/blsfood_new.csv"))
+plot(blsfood)
+```
+
+ - 年周期性
+ - トレンド
+
+## 卸売り高データ
+```{r}
+whard <- as.ts(read.csv("../data/whard_new.csv"))
+plot(whard)
+```
+
+ - 年周期性
+ - 正値性
+ - トレンドと変動分散の連動
+ 
+# MYE1Fデータ
+```{r}
+mye1f <- as.ts(read.csv("../data/mye1f_new.csv"))
+plot(mye1f)
+```
+
+ - トレンドなし
+ - 区分的定常性
+ - 分散非定常
+ - 共分散非定常
+ 
+## 日経225平均データ
+```{r}
+nikkei225 <- as.ts(read.csv("../data/Nikkei225_new.csv"))
+plot(nikkei225)
+```
+
+ - トレンド + 分散変動
+ - トレンド下降時の分散増加
+ 
+# 時系列の分類
+ - 連続時間系列と離散時間系列
+ - 一変量時系列と多変量時系列
+ - 定常時系列と非定常時系列
+ - 線形時系列と非線形時系列
+ - ガウス型時系列と非ガウス型時系列
+ 
+# 変数変換
+ - 目的
+  - 線形、定常、正規性などを仮定したモデリングを容易にするため
+  - パラメータ最適化を容易にするため
+ - 例
+  - 対数変換
+  - ロジット変換
+  - Box-Cox変換
+  - 階差
+  
+## nikkei225データの対数差分
+```{r}
+plot(diff(log(nikkei225)))
+```
+
+## 季節階差
+ - 季節変動の除去
+```{r}
+y <- log(whard)
+n <- length(whard)
+z <- rep(NA,n)
+period <- 12
+z[1:n] <- NA
+for(i in period+1:n) {
+  z[i] <- y[i] - y[i - period]
+}
+plot(as.ts(z))
+```
+
+## 前期比
+```{r}
+plot(whard/lag(whard))
+```
+
+## 前年同期比
+```{r}
+plot(whard/lag(whard,k=-12))
+```
+
+## 移動平均フィルタ
+### 最高気温データ
+```{r}
+plot(maxtemp,ylim=c(0,40))
+x <- SMA(maxtemp,17)
+lines(x,col=2,lwd=1)
+```
+
+## 移動平均フィルタ
+```{r}
+plot(maxtemp,ylim=c(0,40))
+y <- maxtemp
+ndata <- length(maxtemp)
+y[1:ndata] <- NA
+kfilter <- 17
+n0 <- kfilter + 1
+n1 <- ndata + kfilter
+for (i in n0:n1) {
+  i0 <- i - kfilter
+  i1 <- i + kfilter
+  y[i] <- mean(maxtemp[i0:i1])
+}
+lines(y,col = 2, ylim = c(0,40))
+```
+
+## 移動メディアンフィルタ
+```{r}
+plot(maxtemp,ylim=c(0,40))
+y <- maxtemp
+ndata <- length(maxtemp)
+y[1:ndata] <- NA
+kfilter <- 17
+n0 <- kfilter + 1
+n1 <- ndata + kfilter
+for (i in n0:n1) {
+  i0 <- i - kfilter
+  i1 <- i + kfilter
+  y[i] <- median(maxtemp[i0:i1])
+}
+lines(y,col = 3, ylim = c(0,40),lwd = 2)
+```
+
+## MAとMMの比較(ノイズなし)
+```{r}
+z <- rep(0,200)
+z[101:200] <- 1
+z[50] <- 1
+z[150] <- 2
+z <- as.ts(z)
+plot(z)
+```
+
+## 移動平均フィルタと移動メディアンフィルタ
+
+```{r}
+x <- rep(0,400)
+x[101:200] <- 1
+x[201:300] <- 1
+y <- x + rnorm(400,mean = 0, sd = 0.5)
+ng_test <- as.ts(y)
+plot(ng_test)
+```
+
+## 移動平均フィルタ
+ - 長所
+  - 滑らかな推定値
+ - 短所
+  - 構造変化を正確に検出できない  
+  - 異常値に敏感
+
+## 移動メディアンフィルタ
+ - 長所
+  - 構造変化を検出できる
+  - 異常値に頑健
+ - 短所
+  - 変動が大きい
+  
+## 欠損値と異常値 
+```{r}
+# 榛原地下水位データ
+haibara <- as.ts(read.csv("../data/haibara_new.csv"))
+haibara_water <- haibara[,2]
+plot(haibara_water,type = "h")
+```
+
+```{r}
+plot(haibara_water[211:280],type = "h",ylim = c(6.35,6.28))
+```
+
+
+# 参考
+http://www.mi.u-tokyo.ac.jp/mds-oudan/lecture_document_2019_math7/time_series_analysis_2019.html 講義資料より
